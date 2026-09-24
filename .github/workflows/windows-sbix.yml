@@ -1,0 +1,122 @@
+name: Windows sbix rendering
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixture:
+    name: Build public Noto 3D subset
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install fixture tools
+        run: |
+          python --version
+          python -m pip install -r fixture/requirements.txt
+      - name: Fetch and subset public Noto 3D
+        run: python fixture/prepare_fixture.py --output-dir artifacts/fixture
+      - name: Record fixture toolchain
+        run: python -m pip freeze > artifacts/fixture/toolchain.txt
+      - name: Record fixture hash and size
+        run: sha256sum artifacts/fixture/noto-3d-sbix-test.ttf | tee artifacts/fixture/font-sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: noto-3d-sbix-fixture
+          path: artifacts/fixture/
+          if-no-files-found: error
+          retention-days: 30
+
+  native:
+    name: Native DirectWrite + Direct2D (Windows 11 ARM64)
+    needs: fixture
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: noto-3d-sbix-fixture
+          path: artifacts/fixture
+      - name: Record Windows and fixture identity
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/native | Out-Null
+          Get-ComputerInfo -Property OsName,OsVersion,OsBuildNumber,OsArchitecture | Format-List | Tee-Object artifacts/windows.txt
+          Get-FileHash artifacts/fixture/noto-3d-sbix-test.ttf -Algorithm SHA256 | Format-List | Tee-Object artifacts/native-fixture-hash.txt
+          Get-Content artifacts/fixture/manifest.json
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: arm64
+      - name: Compile the native probe
+        shell: cmd
+        run: |
+          echo WindowsSDKVersion=%WindowsSDKVersion% > artifacts\native\toolchain.txt
+          cl /Bv /nologo /EHsc /std:c++17 /utf-8 /W4 /DUNICODE /D_UNICODE native\sbix_probe.cpp /Fe:artifacts\native\sbix-native-probe.exe >> artifacts\native\toolchain.txt 2>&1
+          if errorlevel 1 exit /b 1
+          type artifacts\native\toolchain.txt
+      - name: Run DirectWrite and WARP Direct2D probe
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/native | Out-Null
+          & artifacts/native/sbix-native-probe.exe artifacts/fixture/noto-3d-sbix-test.ttf artifacts/native 2>&1 | Tee-Object artifacts/native/native.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-windows-results
+          path: |
+            artifacts/windows.txt
+            artifacts/native-fixture-hash.txt
+            artifacts/fixture/toolchain.txt
+            artifacts/fixture/manifest.json
+            artifacts/native/
+          if-no-files-found: warn
+          retention-days: 30
+
+  browser:
+    name: Downloadable @font-face in Microsoft Edge (Windows 11 ARM64)
+    needs: fixture
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: noto-3d-sbix-fixture
+          path: artifacts/fixture
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: browser/package-lock.json
+      - name: Record Windows and fixture identity
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/browser | Out-Null
+          Get-ComputerInfo -Property OsName,OsVersion,OsBuildNumber,OsArchitecture | Format-List | Tee-Object artifacts/browser/windows.txt
+          Get-FileHash artifacts/fixture/noto-3d-sbix-test.ttf -Algorithm SHA256 | Format-List | Tee-Object artifacts/browser/fixture-hash.txt
+          Get-Content artifacts/fixture/manifest.json
+      - name: Install Playwright
+        run: npm ci --prefix browser
+      - name: Render with installed Microsoft Edge
+        shell: pwsh
+        run: |
+          node browser/run.mjs --font artifacts/fixture/noto-3d-sbix-test.ttf --manifest artifacts/fixture/manifest.json --output-dir artifacts/browser 2>&1 | Tee-Object artifacts/browser/browser.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: edge-browser-results
+          path: |
+            artifacts/browser/
+            artifacts/fixture/toolchain.txt
+            artifacts/fixture/manifest.json
+          if-no-files-found: warn
+          retention-days: 30

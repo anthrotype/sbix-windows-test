@@ -1,0 +1,12 @@
+{
+  "name": "sbix-windows-test-browser",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0",
+    "pngjs": "7.0.0"
+  }
+}
