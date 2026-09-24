@@ -391,14 +391,16 @@ void RenderCase(
         const DWRITE_COLOR_GLYPH_RUN1* colorRun = nullptr;
         Check(colorRuns->GetCurrentRun(&colorRun),
               "IDWriteColorGlyphRunEnumerator1::GetCurrentRun");
-        if (!colorRun || colorRun->glyphImageFormat != kPngFormat || !colorRun->glyphRun) {
+        if (!colorRun || colorRun->glyphImageFormat != kPngFormat ||
+            colorRun->glyphRun.glyphCount == 0) {
             throw std::runtime_error("DirectWrite returned a non-PNG or empty color glyph run");
         }
         std::cout << "  colorRun=" << runCount << " imageFormat=PNG glyphCount="
-                  << colorRun->glyphRun->glyphCount << '\n';
+                  << colorRun->glyphRun.glyphCount << '\n';
         warp.context4->DrawColorBitmapGlyphRun(
-            colorRun->glyphImageFormat, colorRun->baselineOrigin, colorRun->glyphRun,
-            DWRITE_MEASURING_MODE_NATURAL,
+            colorRun->glyphImageFormat,
+            D2D1::Point2F(colorRun->baselineOriginX, colorRun->baselineOriginY),
+            &colorRun->glyphRun, colorRun->measuringMode,
             D2D1_COLOR_BITMAP_GLYPH_SNAP_OPTION_DEFAULT);
         ++runCount;
     }
