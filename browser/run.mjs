@@ -166,6 +166,7 @@ try {
       const result = {
         case: testCase.id,
         codepoints: testCase.codepoints,
+        expectChromatic: testCase.expect_chromatic,
         size,
         platformFonts: fonts,
         screenshot: filename,
@@ -176,7 +177,9 @@ try {
     }
   }
 
-  diagnostics.passed = `${diagnostics.results.length} case/size renders; all used the downloaded custom font and colorful PNG pixels`;
+  diagnostics.passed =
+    `${diagnostics.results.length} case/size renders; all used the downloaded custom face and were nonblank; ` +
+    'chromatic pixels were required for the two color cases at sizes >=64px';
   console.log(JSON.stringify({ browser: diagnostics.browser, os: diagnostics.os, passed: diagnostics.passed }));
 } catch (error) {
   diagnostics.error = error instanceof Error ? error.stack : String(error);
