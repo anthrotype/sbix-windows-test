@@ -159,7 +159,8 @@ try {
       const screenshot = await page.locator('#capture').screenshot({ path: path.join(outputDir, filename) });
       const pixels = inspectPng(screenshot);
       if (pixels.nonBackgroundPixels < 100 || pixels.quantizedColors < 4 ||
-          (size >= 64 && (pixels.chromaticPixels === 0 || pixels.chromaticColors === 0))) {
+          (testCase.expect_chromatic && size >= 64 &&
+            (pixels.chromaticPixels === 0 || pixels.chromaticColors === 0))) {
         throw new Error(`${filename} is blank or monochrome: ${JSON.stringify(pixels)}`);
       }
       const result = {

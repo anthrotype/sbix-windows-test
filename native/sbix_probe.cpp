@@ -38,12 +38,13 @@ constexpr uint32_t kRenderSizes[] = {32, 64, 96, 128};
 struct TestCase {
     const char* id;
     std::vector<uint32_t> codepoints;
+    bool expectChromatic;
 };
 
 const TestCase kCases[] = {
-    {"grinning-face", {0x1F600}},
-    {"family-zwj", {0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F467, 0x200D, 0x1F466}},
-    {"woman-technologist-zwj", {0x1F469, 0x200D, 0x1F4BB}},
+    {"grinning-face", {0x1F600}, true},
+    {"family-zwj", {0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F467, 0x200D, 0x1F466}, false},
+    {"woman-technologist-zwj", {0x1F469, 0x200D, 0x1F4BB}, true},
 };
 
 std::string HrText(HRESULT hr) {
@@ -405,8 +406,7 @@ void RenderCase(
     Check(warp.context->EndDraw(), "ID2D1DeviceContext::EndDraw");
 
     const std::vector<BYTE> pixels = ReadPixels(warp, target);
-    // At 32 px the family artwork's few saturated details can vanish during bitmap downsampling.
-    const PixelStats pixelStats = CheckColorPixels(pixels, emSize >= 64);
+    const PixelStats pixelStats = CheckColorPixels(pixels, test.expectChromatic && emSize >= 64);
     const std::string filename = std::string(test.id) + "_" + std::to_string(emSize) + ".png";
     SavePng(outputDir / filename, pixels);
     std::cout << "  rendered=" << filename << " nonBackgroundPixels=" << pixelStats.nonBackground

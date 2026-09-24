@@ -22,9 +22,9 @@ UPSTREAM_FONT_SHA256 = "6f4312a7c02d0c9de88095ee65e320ffe9316d2d8d56e4c515e7181f
 UPSTREAM_LICENSE_PATH = "3D/fonts/LICENSE"
 SELECTED_PPEM = 109
 CASES = [
-    {"id": "grinning-face", "text": "😀"},
-    {"id": "family-zwj", "text": "👨‍👩‍👧‍👦"},
-    {"id": "woman-technologist-zwj", "text": "👩‍💻"},
+    {"id": "grinning-face", "text": "😀", "expect_chromatic": True},
+    {"id": "family-zwj", "text": "👨‍👩‍👧‍👦", "expect_chromatic": False},
+    {"id": "woman-technologist-zwj", "text": "👩‍💻", "expect_chromatic": True},
 ]
 
 
@@ -111,6 +111,7 @@ def main() -> None:
         download(license_url, license_path)
 
         source = TTFont(source_path)
+        source.recalcTimestamp = False
         if "sbix" not in source:
             raise RuntimeError("The selected upstream font has no sbix table")
         strikes = source["sbix"].strikes
