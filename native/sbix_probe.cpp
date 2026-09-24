@@ -197,7 +197,7 @@ RenderTarget CreateRenderTarget(WarpD2D& warp) {
     desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     desc.SampleDesc.Count = 1;
     desc.Usage = D3D11_USAGE_DEFAULT;
-    desc.BindFlags = D3D11_BIND_RENDER_TARGET;
+    desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
     Check(warp.d3dDevice->CreateTexture2D(&desc, nullptr, &result.texture),
           "ID3D11Device::CreateTexture2D(render target)");
     Check(result.texture.As(&result.surface), "QueryInterface(IDXGISurface)");
@@ -207,7 +207,8 @@ RenderTarget CreateRenderTarget(WarpD2D& warp) {
     bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_PREMULTIPLIED;
     bitmapProperties.dpiX = 96.0f;
     bitmapProperties.dpiY = 96.0f;
-    bitmapProperties.bitmapOptions = D2D1_BITMAP_OPTIONS_TARGET;
+    bitmapProperties.bitmapOptions =
+        D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW;
     Check(warp.context->CreateBitmapFromDxgiSurface(
               result.surface.Get(), &bitmapProperties, &result.bitmap),
           "ID2D1DeviceContext::CreateBitmapFromDxgiSurface");
